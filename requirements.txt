@@ -5,4 +5,5 @@ soda-core-snowflake
 soda-core-duckdb
 python-dotenv
 requests
+pyyaml
 pydantic
