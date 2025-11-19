@@ -1,0 +1,22 @@
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
+resource "aws_s3_bucket" "bronze_lakehouse" {
+  bucket = "depguard-bronze-lakehouse-${random_id.suffix.hex}"
+}
+
+resource "aws_s3_bucket_public_access_block" "bronze_lakehouse_pab" {
+  bucket = aws_s3_bucket.bronze_lakehouse.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
