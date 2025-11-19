@@ -1,0 +1,14 @@
+# What the DepGuard pipeline tracks.
+#
+# packages: tracked for vulnerabilities (OSV). Add `repo: owner/name` to also
+#           pull GitHub health metrics, which feed the Dependency Risk Index.
+# manifests: requirements.txt / package-lock.json / package.json files whose
+#           dependencies are tracked too (paths relative to the project root).
+#           These have no repo, so they get vulnerability data but a neutral
+#           health score unless you also list them under `packages`.
+packages:
+  - {name: requests, ecosystem: PyPI, repo: psf/requests}
+  - {name: django, ecosystem: PyPI, repo: django/django}
+  - {name: lodash, ecosystem: npm, repo: lodash/lodash}
+
+manifests: []
