@@ -10,7 +10,7 @@ depguard:
       account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
       user: "{{ env_var('SNOWFLAKE_USER') }}"
       password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
-      role: "{{ env_var('SNOWFLAKE_ROLE', 'ACCOUNTADMIN') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'depguard_role') }}"
       database: "{{ env_var('SNOWFLAKE_DATABASE', 'depguard_db') }}"
       warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'depguard_wh') }}"
       schema: "silver"
