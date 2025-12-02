@@ -1,126 +1,93 @@
+import os
+import sys
+from datetime import datetime, timezone
+
 import dlt
 from dlt.sources.helpers import requests
-from datetime import datetime, timezone
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from depguard_common import configure_snowflake_env, get_destination, load_watchlist  # noqa: E402
 
-# Map custom Snowflake vars to dlt expected format
-if os.getenv("DESTINATION_NAME") == "snowflake":
-    os.environ["DESTINATION__SNOWFLAKE__CREDENTIALS__DATABASE"] = os.getenv("SNOWFLAKE_DATABASE", "")
-    os.environ["DESTINATION__SNOWFLAKE__CREDENTIALS__HOST"] = os.getenv('SNOWFLAKE_ACCOUNT', '')
-    os.environ["DESTINATION__SNOWFLAKE__CREDENTIALS__USERNAME"] = os.getenv("SNOWFLAKE_USER", "")
-    os.environ["DESTINATION__SNOWFLAKE__CREDENTIALS__PASSWORD"] = os.getenv("SNOWFLAKE_PASSWORD", "")
-    os.environ["DESTINATION__SNOWFLAKE__CREDENTIALS__WAREHOUSE"] = os.getenv("SNOWFLAKE_WAREHOUSE", "")
-    os.environ["DESTINATION__SNOWFLAKE__CREDENTIALS__ROLE"] = os.getenv("SNOWFLAKE_ROLE", "")
+configure_snowflake_env()
 
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+QUERY = """
+query($owner: String!, $name: String!) {
+    repository(owner: $owner, name: $name) {
+        name
+        owner { login }
+        stargazerCount
+        forkCount
+        isArchived
+        pushedAt
+        issues(states: OPEN) { totalCount }
+        defaultBranchRef {
+            target {
+                ... on Commit { history { totalCount } }
+            }
+        }
+    }
+}
+"""
+
 
 @dlt.resource(table_name="bronze_github_repos", write_disposition="append")
 def github_repos_resource(repos):
-    """
-    Query GitHub GraphQL API for repository metrics.
-    """
-    if not GITHUB_TOKEN:
+    """GitHub health metrics for each repo, tagged with the package it belongs to."""
+    token = os.getenv("GITHUB_TOKEN")
+    if not token:
         raise ValueError("GITHUB_TOKEN is not set in the environment.")
-    
-    url = "https://api.github.com/graphql"
-    headers = {
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    
+
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    loaded_at = datetime.now(timezone.utc).isoformat()
+
     for repo in repos:
-        owner = repo["owner"]
-        name = repo["name"]
-        
-        query = """
-        query($owner: String!, $name: String!) {
-            repository(owner: $owner, name: $name) {
-                name
-                owner { login }
-                stargazerCount
-                forkCount
-                issues(states: OPEN) {
-                    totalCount
-                }
-                defaultBranchRef {
-                    target {
-                        ... on Commit {
-                            history {
-                                totalCount
-                            }
-                        }
-                    }
-                }
-                collaborators {
-                    totalCount
-                }
-            }
+        label = f"{repo['owner']}/{repo['name']}"
+        response = requests.post(
+            "https://api.github.com/graphql",
+            json={"query": QUERY, "variables": {"owner": repo["owner"], "name": repo["name"]}},
+            headers=headers,
+        )
+        if response.status_code != 200:
+            raise RuntimeError(f"GitHub request failed for {label}: {response.status_code} {response.text}")
+
+        payload = response.json()
+        data = (payload.get("data") or {}).get("repository")
+        if payload.get("errors") or not data:
+            raise RuntimeError(f"GitHub query failed for {label}: {payload.get('errors')}")
+
+        branch = data.get("defaultBranchRef") or {}
+        commits = ((branch.get("target") or {}).get("history") or {}).get("totalCount", 0)
+
+        yield {
+            "repo_name": data["name"],
+            "owner": data["owner"]["login"],
+            "package_name": repo["package_name"],
+            "package_ecosystem": repo["ecosystem"],
+            "stargazers": data["stargazerCount"],
+            "forks": data["forkCount"],
+            "open_issues": data["issues"]["totalCount"],
+            "total_commits": commits,
+            "is_archived": data["isArchived"],
+            "pushed_at": data["pushedAt"],
+            "_loaded_at_utc": loaded_at,
         }
-        """
-        
-        variables = {"owner": owner, "name": name}
-        
-        response = requests.post(url, json={"query": query, "variables": variables}, headers=headers)
-        if response.status_code == 200:
-            data = response.json()
-            if "errors" in data:
-                print(f"Error querying {owner}/{name}: {data['errors']}")
-                # If the token lacks permission to read collaborators, it will return an error here
-                # Let's extract what we can if partial data is returned
-                repo_data = data.get("data", {}).get("repository")
-                if not repo_data:
-                    continue
-            else:
-                repo_data = data["data"]["repository"]
-            
-            if not repo_data:
-                continue
-            
-            issues_count = repo_data.get("issues", {}).get("totalCount", 0)
-            commits_count = 0
-            if repo_data.get("defaultBranchRef") and repo_data["defaultBranchRef"].get("target"):
-                commits_count = repo_data["defaultBranchRef"]["target"]["history"]["totalCount"]
-            
-            collab_data = repo_data.get("collaborators")
-            collab_count = collab_data.get("totalCount", 1) if collab_data else None
-            
-            record = {
-                "repo_name": repo_data["name"],
-                "owner": repo_data["owner"]["login"],
-                "stargazers": repo_data["stargazerCount"],
-                "forks": repo_data["forkCount"],
-                "open_issues": issues_count,
-                "total_commits": commits_count,
-                "collaborators": collab_count,
-                "is_single_maintainer": (collab_count == 1) if collab_count is not None else None,
-                "_loaded_at_utc": datetime.now(timezone.utc).isoformat()
-            }
-            yield record
-        else:
-            print(f"Failed to fetch data for {owner}/{name}. Status: {response.status_code}")
-            print(response.text)
+
 
 @dlt.source(schema_contract="evolve")
 def github_source(repos):
     return github_repos_resource(repos)
 
+
 if __name__ == "__main__":
-    destination_name = os.getenv("DESTINATION_NAME", "duckdb")
-    
+    destination = get_destination()
+    _, repos = load_watchlist()
+    if not repos:
+        sys.exit("No repos in config/watchlist.yml (add `repo: owner/name` to a package).")
+
     pipeline = dlt.pipeline(
         pipeline_name="github_ingestion",
-        destination=destination_name,
-        dataset_name="bronze"
+        destination=destination,
+        dataset_name="bronze",
     )
-    
-    test_repos = [
-        {"owner": "psf", "name": "requests"},
-        {"owner": "django", "name": "django"}
-    ]
-    
-    print(f"Running GitHub pipeline to destination: {destination_name}")
-    load_info = pipeline.run(github_source(test_repos))
-    print(load_info)
+    print(f"Running GitHub pipeline for {len(repos)} repos to: {os.getenv('DESTINATION_NAME', 'duckdb')}")
+    print(pipeline.run(github_source(repos)))
