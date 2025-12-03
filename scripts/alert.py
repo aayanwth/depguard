@@ -22,3 +22,28 @@ LIMIT {limit}
 """
 
 
+def fetch_rows(threshold, limit):
+    sql = QUERY.format(threshold=float(threshold), limit=int(limit))
+    if os.getenv("DESTINATION_NAME", "duckdb") == "snowflake":
+        import snowflake.connector
+
+        conn = snowflake.connector.connect(
+            account=os.environ["SNOWFLAKE_ACCOUNT"],
+            user=os.environ["SNOWFLAKE_USER"],
+            password=os.environ["SNOWFLAKE_PASSWORD"],
+            warehouse=os.getenv("SNOWFLAKE_WAREHOUSE"),
+            database=os.getenv("SNOWFLAKE_DATABASE"),
+            role=os.getenv("SNOWFLAKE_ROLE"),
+        )
+    else:
+        import duckdb
+
+        conn = duckdb.connect(os.path.join(ROOT, "duckdb.duckdb"), read_only=True)
+    try:
+        cur = conn.cursor()
+        cur.execute(sql)
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
