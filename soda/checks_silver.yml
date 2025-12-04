@@ -1,5 +1,13 @@
 checks for silver_packages:
-  - duplicate_count(package_name) = 0
+  - row_count > 0
+  - duplicate_count(package_name, ecosystem) = 0
 
 checks for silver_repositories:
   - min(stargazers) >= 0
+  - duplicate_count(owner, repo_name) = 0
+
+checks for silver_cve_incidents:
+  - row_count > 0
+  - duplicate_count(incident_sk) = 0
+  - invalid_count(severity_label) = 0:
+      valid values: [CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN]
