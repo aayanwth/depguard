@@ -38,3 +38,23 @@ def configure_snowflake_env():
         os.environ[f"DESTINATION__SNOWFLAKE__CREDENTIALS__{dlt_key}"] = os.getenv(env_key, "")
 
 
+def get_destination():
+    """Return the dlt destination. DuckDB runs write to <project>/duckdb.duckdb,
+    the same file dbt and Soda read, so local mode works end to end."""
+    import dlt
+
+    if os.getenv("DESTINATION_NAME", "duckdb") == "snowflake":
+        return "snowflake"
+    return dlt.destinations.duckdb(os.path.join(ROOT, "duckdb.duckdb"))
+
+
+# ---------------------------------------------------------------------------
+# Watchlist (what the pipeline tracks)
+# ---------------------------------------------------------------------------
+def normalize_name(name, ecosystem):
+    name = name.strip()
+    if ecosystem == "PyPI":
+        return re.sub(r"[-_.]+", "-", name).lower()
+    return name
+
+
