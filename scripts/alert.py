@@ -47,3 +47,12 @@ def fetch_rows(threshold, limit):
         conn.close()
 
 
+def build_message(rows, threshold):
+    if not rows:
+        return None
+    lines = [f"DepGuard: {len(rows)} vulnerabilities with DRI >= {threshold}"]
+    for package, ecosystem, vuln_id, severity, dri in rows:
+        lines.append(f"  [{dri:>5.2f}] {package} ({ecosystem})  {vuln_id}  {severity}")
+    return "\n".join(lines)
+
+
