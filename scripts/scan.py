@@ -24,3 +24,20 @@ from depguard_common import (
 )
 
 
+def collect_dependencies(targets):
+    deps, seen = [], set()
+    for target in targets:
+        if not os.path.exists(target):
+            raise FileNotFoundError(f"Path not found: {target}")
+        manifests = discover_manifests(target)
+        if not manifests:
+            print(f"warning: no supported manifest found in {target}", file=sys.stderr)
+        for manifest in manifests:
+            for dep in parse_manifest(manifest):
+                key = (dep["ecosystem"], dep["name"], dep["version"])
+                if key not in seen:
+                    seen.add(key)
+                    deps.append(dep)
+    return deps
+
+
