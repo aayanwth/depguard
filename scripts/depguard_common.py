@@ -58,3 +58,45 @@ def normalize_name(name, ecosystem):
     return name
 
 
+def load_watchlist(path=None):
+    """Return (packages, repos). `packages` is a de-duplicated list of
+    {"name", "ecosystem"} including every dependency found in the manifests
+    listed in the watchlist. `repos` maps explicit repo entries to packages."""
+    path = path or os.path.join(ROOT, "config", "watchlist.yml")
+    with open(path, encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+
+    packages, repos, seen = [], [], set()
+
+    def add(name, ecosystem):
+        key = (normalize_name(name, ecosystem), ecosystem)
+        if key not in seen:
+            seen.add(key)
+            packages.append({"name": key[0], "ecosystem": ecosystem})
+
+    for entry in cfg.get("packages") or []:
+        add(entry["name"], entry["ecosystem"])
+        if entry.get("repo"):
+            owner, repo_name = entry["repo"].split("/", 1)
+            repos.append({
+                "owner": owner,
+                "name": repo_name,
+                "package_name": normalize_name(entry["name"], entry["ecosystem"]),
+                "ecosystem": entry["ecosystem"],
+            })
+
+    for manifest in cfg.get("manifests") or []:
+        manifest_path = manifest if os.path.isabs(manifest) else os.path.join(ROOT, manifest)
+        for dep in parse_manifest(manifest_path):
+            add(dep["name"], dep["ecosystem"])
+
+    return packages, repos
+
+
+# ---------------------------------------------------------------------------
+# Manifest parsing
+# ---------------------------------------------------------------------------
+_REQ_RE = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*(\[[^\]]*\])?\s*(.*)$")
+_VERSION_RE = re.compile(r"^\d+(\.\d+)*([.-]?(a|b|rc|alpha|beta|post|dev)?\d*)*$")
+
+
