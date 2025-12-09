@@ -100,3 +100,30 @@ _REQ_RE = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]*)\s*(\[[^\]]*\])?\s*(.*)$"
 _VERSION_RE = re.compile(r"^\d+(\.\d+)*([.-]?(a|b|rc|alpha|beta|post|dev)?\d*)*$")
 
 
+def parse_requirements(path):
+    """Parse a pip requirements file. Only `==` pins give an exact version;
+    anything else is returned with version=None (unpinned)."""
+    deps = []
+    with open(path, encoding="utf-8") as f:
+        for raw in f:
+            line = raw.split(" #")[0].strip()
+            if not line or line.startswith(("#", "-", "git+", "http")):
+                continue
+            line = line.split(";")[0].strip()  # drop environment markers
+            m = _REQ_RE.match(line)
+            if not m:
+                continue
+            name, _, spec = m.groups()
+            version = None
+            pin = re.match(r"^===?\s*([^\s,]+)$", spec.strip())
+            if pin and "*" not in pin.group(1):
+                version = pin.group(1)
+            deps.append({
+                "name": normalize_name(name, "PyPI"),
+                "ecosystem": "PyPI",
+                "version": version,
+                "source": path,
+            })
+    return deps
+
+
