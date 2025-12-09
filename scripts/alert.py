@@ -56,3 +56,29 @@ def build_message(rows, threshold):
     return "\n".join(lines)
 
 
+def main():
+    threshold = float(os.getenv("ALERT_MIN_DRI", "8.0"))
+    try:
+        rows = fetch_rows(threshold, limit=25)
+    except Exception as exc:  # alerting is best-effort
+        print(f"ALERT CHECK FAILED: could not read gold layer: {exc}")
+        return 0
+
+    message = build_message(rows, threshold)
+    if not message:
+        print(f"No vulnerabilities at or above DRI {threshold}.")
+        return 0
+
+    print(message)
+    webhook = os.getenv("SLACK_WEBHOOK_URL")
+    if webhook:
+        try:
+            requests.post(webhook, json={"text": f"```{message}```"}, timeout=15).raise_for_status()
+            print("Posted alert to Slack.")
+        except requests.RequestException as exc:
+            print(f"Slack post failed: {exc}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
