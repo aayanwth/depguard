@@ -41,3 +41,39 @@ def collect_dependencies(targets):
     return deps
 
 
+def scan(deps):
+    """Return (findings, unpinned). Pinned deps are matched against their exact
+    version; unpinned ones can't be judged and are reported separately."""
+    pinned = [d for d in deps if d["version"]]
+    unpinned = [d for d in deps if not d["version"]]
+
+    queries = [
+        {"package": {"name": d["name"], "ecosystem": d["ecosystem"]}, "version": d["version"]}
+        for d in pinned
+    ]
+    stubs = osv_query_batch(queries) if queries else []
+    full = fetch_vulns([v["id"] for per_dep in stubs for v in per_dep])
+
+    findings = []
+    for dep, dep_stubs in zip(pinned, stubs):
+        for stub in dep_stubs:
+            vuln = full[stub["id"]]
+            label, score = severity_from_vuln(vuln)
+            cves = [a for a in vuln.get("aliases", []) if a.startswith("CVE-")]
+            findings.append({
+                "package": dep["name"],
+                "version": dep["version"],
+                "ecosystem": dep["ecosystem"],
+                "id": vuln["id"],
+                "cves": cves,
+                "severity": label,
+                "cvss_score": score,
+                "fixed_in": fixed_versions(vuln, dep["name"], dep["ecosystem"]),
+                "summary": vuln.get("summary") or (vuln.get("details", "").split("\n")[0][:120]),
+                "approximate": bool(dep.get("approximate")),
+                "source": dep["source"],
+            })
+    findings.sort(key=lambda f: (-SEVERITY_ORDER[f["severity"]], f["package"], f["id"]))
+    return findings, unpinned
+
+
