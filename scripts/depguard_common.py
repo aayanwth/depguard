@@ -174,3 +174,32 @@ def parse_package_json(path):
     return deps
 
 
+def parse_manifest(path):
+    base = os.path.basename(path).lower()
+    if base == "package-lock.json":
+        return parse_package_lock(path)
+    if base == "package.json":
+        return parse_package_json(path)
+    if base.endswith(".txt"):
+        return parse_requirements(path)
+    raise ValueError(f"Unsupported manifest: {path}")
+
+
+def discover_manifests(target):
+    """Return manifest files for a file or directory. In a directory,
+    package-lock.json wins over package.json from the same folder."""
+    if os.path.isfile(target):
+        return [target]
+    found = []
+    skip = {"node_modules", ".git", "venv", ".venv", "__pycache__", "dbt_packages"}
+    for dirpath, dirnames, filenames in os.walk(target):
+        dirnames[:] = [d for d in dirnames if d not in skip]
+        for fn in sorted(filenames):
+            low = fn.lower()
+            if re.match(r"^requirements.*\.txt$", low) or low == "package-lock.json":
+                found.append(os.path.join(dirpath, fn))
+            elif low == "package.json" and "package-lock.json" not in [f.lower() for f in filenames]:
+                found.append(os.path.join(dirpath, fn))
+    return found
+
+
