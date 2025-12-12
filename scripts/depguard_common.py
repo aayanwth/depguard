@@ -127,3 +127,50 @@ def parse_requirements(path):
     return deps
 
 
+def parse_package_lock(path):
+    """Parse package-lock.json (v1, v2 and v3). Includes transitive deps."""
+    with open(path, encoding="utf-8") as f:
+        lock = json.load(f)
+    deps = {}
+    if "packages" in lock:  # lockfile v2/v3
+        for key, info in lock["packages"].items():
+            if not key or "node_modules/" not in key:
+                continue
+            name = info.get("name") or key.rsplit("node_modules/", 1)[1]
+            if info.get("version") and not info.get("link"):
+                deps[(name, info["version"])] = info.get("dev", False)
+    else:  # lockfile v1
+
+        def walk(tree):
+            for name, info in (tree or {}).items():
+                if info.get("version"):
+                    deps[(name, info["version"])] = info.get("dev", False)
+                walk(info.get("dependencies"))
+
+        walk(lock.get("dependencies"))
+    return [
+        {"name": n, "ecosystem": "npm", "version": v, "source": path}
+        for (n, v) in sorted(deps)
+    ]
+
+
+def parse_package_json(path):
+    """Fallback when there is no lockfile. Ranges like ^1.2.3 are approximated
+    by their base version, so results are flagged as approximate."""
+    with open(path, encoding="utf-8") as f:
+        pkg = json.load(f)
+    deps = []
+    for section in ("dependencies", "devDependencies", "optionalDependencies"):
+        for name, spec in (pkg.get(section) or {}).items():
+            base = re.sub(r"^[\^~=v<>\s]+", "", str(spec)).split(" ")[0]
+            version = base if re.match(r"^\d+\.\d+\.\d+", base) else None
+            deps.append({
+                "name": name,
+                "ecosystem": "npm",
+                "version": version,
+                "approximate": True,
+                "source": path,
+            })
+    return deps
+
+
