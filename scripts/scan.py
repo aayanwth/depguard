@@ -77,3 +77,25 @@ def scan(deps):
     return findings, unpinned
 
 
+def print_report(deps, findings, unpinned):
+    print(f"Scanned {len(deps) - len(unpinned)} pinned dependencies "
+          f"({len(unpinned)} unpinned and skipped).\n")
+    if not findings:
+        print("No known vulnerabilities found.")
+    for f in findings:
+        ids = f["id"] + (f" ({', '.join(f['cves'])})" if f["cves"] else "")
+        fix = f"upgrade to {' or '.join(f['fixed_in'])}" if f["fixed_in"] else "no fix listed"
+        approx = "  [version approximated from package.json range]" if f["approximate"] else ""
+        print(f"[{f['severity']:<8}] {f['package']}=={f['version']} ({f['ecosystem']})  {ids}")
+        print(f"           {f['summary']}")
+        print(f"           fix: {fix}{approx}")
+    if unpinned:
+        print("\nUnpinned dependencies (pin an exact version to get a verdict):")
+        for d in unpinned:
+            print(f"  - {d['name']} ({d['ecosystem']}) in {d['source']}")
+    counts = {s: sum(1 for f in findings if f["severity"] == s) for s in SEVERITY_ORDER}
+    summary = ", ".join(f"{n} {s.lower()}" for s, n in sorted(
+        counts.items(), key=lambda kv: -SEVERITY_ORDER[kv[0]]) if n)
+    print(f"\nSummary: {len(findings)} findings" + (f" ({summary})" if summary else ""))
+
+
