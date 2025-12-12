@@ -38,3 +38,34 @@ def test_severity_prefers_database_label_then_cvss():
     assert severity_from_vuln({}) == ("UNKNOWN", None)
 
 
+def test_requirements_parsing(tmp_path):
+    f = tmp_path / "requirements.txt"
+    f.write_text(
+        "# comment\n"
+        "Django==3.2.0\n"
+        "requests>=2.0  # loose\n"
+        "Flask_Cors[extra]==4.0.0 ; python_version > '3'\n"
+        "-r other.txt\n"
+        "numpy==1.*\n"
+    )
+    deps = {d["name"]: d["version"] for d in parse_requirements(str(f))}
+    assert deps == {"django": "3.2.0", "requests": None, "flask-cors": "4.0.0", "numpy": None}
+
+
+def test_package_lock_v3_and_json(tmp_path):
+    lock = tmp_path / "package-lock.json"
+    lock.write_text(json.dumps({"lockfileVersion": 3, "packages": {
+        "": {"name": "app"},
+        "node_modules/lodash": {"version": "4.17.20"},
+        "node_modules/a/node_modules/@scope/b": {"version": "1.0.0", "dev": True},
+    }}))
+    assert [(d["name"], d["version"]) for d in parse_package_lock(str(lock))] == [
+        ("@scope/b", "1.0.0"), ("lodash", "4.17.20"),
+    ]
+
+    pkg = tmp_path / "package.json"
+    pkg.write_text(json.dumps({"dependencies": {"x": "^1.2.3", "y": "latest"}}))
+    deps = {d["name"]: d["version"] for d in parse_package_json(str(pkg))}
+    assert deps == {"x": "1.2.3", "y": None}
+
+
