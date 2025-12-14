@@ -69,3 +69,21 @@ def test_package_lock_v3_and_json(tmp_path):
     assert deps == {"x": "1.2.3", "y": None}
 
 
+def test_discover_prefers_lockfile(tmp_path):
+    (tmp_path / "package.json").write_text("{}")
+    (tmp_path / "package-lock.json").write_text("{}")
+    (tmp_path / "requirements-dev.txt").write_text("")
+    names = sorted(os.path.basename(p) for p in discover_manifests(str(tmp_path)))
+    assert names == ["package-lock.json", "requirements-dev.txt"]
+
+
+def test_fixed_versions_and_repo():
+    vuln = {"affected": [
+        {"package": {"name": "Django", "ecosystem": "PyPI"},
+         "ranges": [{"type": "ECOSYSTEM", "events": [{"introduced": "0"}, {"fixed": "3.2.1"}]},
+                    {"type": "GIT", "repo": "https://github.com/django/django.git", "events": []}]},
+        {"package": {"name": "other", "ecosystem": "PyPI"},
+         "ranges": [{"events": [{"fixed": "9.9"}]}]},
+    ]}
+    assert fixed_versions(vuln, "django", "PyPI") == ["3.2.1"]
+    assert repo_from_vuln(vuln) == "django/django"
