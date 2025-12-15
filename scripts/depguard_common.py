@@ -232,3 +232,41 @@ def cvss3_score(vector):
     return _roundup(min((1.08 if scope_changed else 1.0) * total, 10))
 
 
+def label_from_score(score):
+    if score is None:
+        return "UNKNOWN"
+    if score >= 9.0:
+        return "CRITICAL"
+    if score >= 7.0:
+        return "HIGH"
+    if score >= 4.0:
+        return "MEDIUM"
+    return "LOW" if score > 0 else "UNKNOWN"
+
+
+def severity_from_vuln(vuln):
+    """Return (label, cvss_score_or_None) for a full OSV vulnerability record."""
+    score = None
+    for sev in vuln.get("severity") or []:
+        if sev.get("type") == "CVSS_V3":
+            score = cvss3_score(sev.get("score", ""))
+            if score is not None:
+                break
+
+    label = str((vuln.get("database_specific") or {}).get("severity", "")).upper()
+    label = {"MODERATE": "MEDIUM"}.get(label, label)
+    if label in SEVERITY_ORDER and label != "UNKNOWN":
+        return label, score
+    return label_from_score(score), score
+
+
+def repo_from_vuln(vuln):
+    """GitHub 'owner/name' from the vulnerability's git ranges, if present."""
+    for aff in vuln.get("affected") or []:
+        for rng in aff.get("ranges") or []:
+            m = re.match(r"^https?://github\.com/([^/]+/[^/.]+)", rng.get("repo") or "")
+            if m:
+                return m.group(1)
+    return ""
+
+
