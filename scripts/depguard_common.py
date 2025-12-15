@@ -300,3 +300,37 @@ def _session():
     return s
 
 
+def osv_query_batch(queries):
+    """Run OSV queries (handles chunking and pagination). Returns one list of
+    vuln stubs ({"id", "modified"}) per query, in order."""
+    session = _session()
+    results = []
+    for start in range(0, len(queries), OSV_BATCH_SIZE):
+        chunk = [dict(q) for q in queries[start:start + OSV_BATCH_SIZE]]
+        vulns = [[] for _ in chunk]
+        pending = list(range(len(chunk)))
+        while pending:
+            resp = session.post(OSV_BATCH_URL, json={"queries": [chunk[i] for i in pending]}, timeout=60)
+            resp.raise_for_status()
+            still_pending = []
+            for idx, res in zip(pending, resp.json().get("results", [])):
+                vulns[idx].extend(res.get("vulns") or [])
+                if res.get("next_page_token"):
+                    chunk[idx]["page_token"] = res["next_page_token"]
+                    still_pending.append(idx)
+            pending = still_pending
+        results.extend(vulns)
+    return results
+
+
+def fetch_vulns(ids, workers=8):
+    """Fetch full OSV records for the given ids. Returns {id: record}."""
+    session = _session()
+
+    def one(vuln_id):
+        resp = session.get(OSV_VULN_URL.format(id=vuln_id), timeout=60)
+        resp.raise_for_status()
+        return vuln_id, resp.json()
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return dict(pool.map(one, sorted(set(ids))))
