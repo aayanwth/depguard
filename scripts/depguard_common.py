@@ -203,3 +203,32 @@ def discover_manifests(target):
     return found
 
 
+# ---------------------------------------------------------------------------
+# Severity
+# ---------------------------------------------------------------------------
+def _roundup(x):
+    return math.ceil(round(x * 10, 5)) / 10
+
+
+def cvss3_score(vector):
+    """CVSS v3.x base score from a vector string, or None if unparseable."""
+    try:
+        parts = dict(p.split(":") for p in vector.split("/")[1:])
+        scope_changed = parts["S"] == "C"
+        av = {"N": 0.85, "A": 0.62, "L": 0.55, "P": 0.2}[parts["AV"]]
+        ac = {"L": 0.77, "H": 0.44}[parts["AC"]]
+        pr = ({"N": 0.85, "L": 0.68, "H": 0.5} if scope_changed
+              else {"N": 0.85, "L": 0.62, "H": 0.27})[parts["PR"]]
+        ui = {"N": 0.85, "R": 0.62}[parts["UI"]]
+        cia = {"H": 0.56, "L": 0.22, "N": 0.0}
+        iss = 1 - (1 - cia[parts["C"]]) * (1 - cia[parts["I"]]) * (1 - cia[parts["A"]])
+    except (KeyError, ValueError, AttributeError):
+        return None
+    impact = (7.52 * (iss - 0.029) - 3.25 * (iss - 0.02) ** 15) if scope_changed else 6.42 * iss
+    if impact <= 0:
+        return 0.0
+    exploitability = 8.22 * av * ac * pr * ui
+    total = impact + exploitability
+    return _roundup(min((1.08 if scope_changed else 1.0) * total, 10))
+
+
