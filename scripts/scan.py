@@ -99,3 +99,33 @@ def print_report(deps, findings, unpinned):
     print(f"\nSummary: {len(findings)} findings" + (f" ({summary})" if summary else ""))
 
 
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Scan project dependencies for known vulnerabilities (OSV).")
+    parser.add_argument("paths", nargs="+", help="manifest files or project directories")
+    parser.add_argument("--fail-on", choices=[s.lower() for s in SEVERITY_ORDER if s != "UNKNOWN"],
+                        default="high", help="exit 1 if a finding at/above this severity exists (default: high)")
+    parser.add_argument("--json", metavar="FILE", help="also write the full report as JSON")
+    args = parser.parse_args(argv)
+
+    try:
+        deps = collect_dependencies(args.paths)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if not deps:
+        print("No dependencies found.")
+        return 0
+
+    findings, unpinned = scan(deps)
+    print_report(deps, findings, unpinned)
+
+    if args.json:
+        with open(args.json, "w", encoding="utf-8") as fh:
+            json.dump({"findings": findings, "unpinned": unpinned}, fh, indent=2)
+
+    threshold = SEVERITY_ORDER[args.fail_on.upper()]
+    return 1 if any(SEVERITY_ORDER[f["severity"]] >= threshold for f in findings) else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
