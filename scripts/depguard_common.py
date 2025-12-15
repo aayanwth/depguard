@@ -270,3 +270,33 @@ def repo_from_vuln(vuln):
     return ""
 
 
+def fixed_versions(vuln, name, ecosystem):
+    """Versions in which the vuln is fixed, for the given package."""
+    fixes = []
+    for aff in vuln.get("affected") or []:
+        pkg = aff.get("package") or {}
+        if pkg.get("ecosystem") != ecosystem:
+            continue
+        if normalize_name(pkg.get("name", ""), ecosystem) != normalize_name(name, ecosystem):
+            continue
+        for rng in aff.get("ranges") or []:
+            for event in rng.get("events") or []:
+                fixed = event.get("fixed")
+                if fixed and not re.fullmatch(r"[0-9a-f]{40}", fixed) and fixed not in fixes:  # skip git SHAs
+                    fixes.append(fixed)
+    return fixes
+
+
+# ---------------------------------------------------------------------------
+# OSV API
+# ---------------------------------------------------------------------------
+def _session():
+    s = requests.Session()
+    adapter = requests.adapters.HTTPAdapter(
+        max_retries=requests.adapters.Retry(total=4, backoff_factor=1.0,
+                                            status_forcelist=(429, 500, 502, 503, 504))
+    )
+    s.mount("https://", adapter)
+    return s
+
+
