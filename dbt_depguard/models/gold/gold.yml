@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: dim_package
+    columns:
+      - name: package_sk
+        tests:
+          - unique
+          - not_null
+      - name: package_name
+        tests:
+          - not_null
+      - name: ecosystem
+        tests:
+          - not_null
+
+  - name: dim_repository
+    columns:
+      - name: repo_sk
+        tests:
+          - unique
+          - not_null
+      - name: repo_name
+        tests:
+          - not_null
+      - name: owner
+        tests:
+          - not_null
+
+  - name: fact_vulnerability_incident
+    columns:
+      - name: cve_id
+        tests:
+          - not_null
+      - name: package_sk
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_package')
+              field: package_sk
