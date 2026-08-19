@@ -1,0 +1,5 @@
+checks for silver_packages:
+  - duplicate_count(package_name) = 0
+
+checks for silver_repositories:
+  - min(stargazers) >= 0

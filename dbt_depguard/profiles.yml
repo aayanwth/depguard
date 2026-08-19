@@ -1,0 +1,19 @@
+depguard:
+  target: duckdb_dev
+  outputs:
+    duckdb_dev:
+      type: duckdb
+      path: ../duckdb.duckdb
+      threads: 4
+    snowflake_prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'ACCOUNTADMIN') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'depguard_db') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'depguard_wh') }}"
+      schema: "silver"
+      threads: 4
+      client_session_keep_alive: False
+

@@ -1,0 +1,7 @@
+version: 2
+sources:
+  - name: bronze
+    schema: bronze
+    tables:
+      - name: bronze_osv_vulnerabilities
+      - name: bronze_github_repos

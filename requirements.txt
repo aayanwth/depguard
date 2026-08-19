@@ -1,0 +1,8 @@
+dlt[duckdb,snowflake]
+dbt-snowflake
+dbt-duckdb
+soda-core-snowflake
+soda-core-duckdb
+python-dotenv
+requests
+pydantic

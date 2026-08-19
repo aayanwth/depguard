@@ -1,0 +1,90 @@
+{
+    "name": "DepGuard Cyber Threat Theme",
+    "dataColors": [
+        "#FF3366",
+        "#00E5FF",
+        "#7000FF",
+        "#00FF66",
+        "#FFB300",
+        "#FF003C",
+        "#8D00FF",
+        "#00C4FF"
+    ],
+    "background": "#0D1117",
+    "foreground": "#C9D1D9",
+    "tableAccent": "#00E5FF",
+    "visualStyles": {
+        "*": {
+            "*": {
+                "background": [
+                    {
+                        "show": true,
+                        "color": { "solid": { "color": "#161B22" } },
+                        "transparency": 20
+                    }
+                ],
+                "border": [
+                    {
+                        "show": true,
+                        "color": { "solid": { "color": "#30363D" } },
+                        "radius": 8
+                    }
+                ],
+                "visualHeader": [
+                    {
+                        "foreground": { "solid": { "color": "#8B949E" } }
+                    }
+                ],
+                "outspacePane": [
+                    {
+                        "backgroundColor": { "solid": { "color": "#0D1117" } }
+                    }
+                ]
+            }
+        },
+        "card": {
+            "*": {
+                "labels": [
+                    {
+                        "color": { "solid": { "color": "#FFFFFF" } },
+                        "fontSize": 28,
+                        "fontFamily": "Segoe UI Bold"
+                    }
+                ],
+                "categoryLabels": [
+                    {
+                        "color": { "solid": { "color": "#8B949E" } },
+                        "fontSize": 12,
+                        "fontFamily": "Segoe UI"
+                    }
+                ]
+            }
+        },
+        "tableEx": {
+            "*": {
+                "grid": [
+                    {
+                        "gridVertical": false,
+                        "gridHorizontal": true,
+                        "gridHorizontalColor": { "solid": { "color": "#30363D" } }
+                    }
+                ],
+                "columnHeaders": [
+                    {
+                        "fontColor": { "solid": { "color": "#8B949E" } },
+                        "backColor": { "solid": { "color": "#161B22" } },
+                        "fontFamily": "Segoe UI Semibold"
+                    }
+                ],
+                "values": [
+                    {
+                        "fontColorPrimary": { "solid": { "color": "#C9D1D9" } },
+                        "backColorPrimary": { "solid": { "color": "#161B22" } },
+                        "fontColorSecondary": { "solid": { "color": "#C9D1D9" } },
+                        "backColorSecondary": { "solid": { "color": "#0D1117" } }
+                    }
+                ]
+            }
+        }
+    }
+}

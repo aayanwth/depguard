@@ -1,0 +1,15 @@
+data_source depguard_duckdb:
+  type: duckdb
+  connection:
+    database: "duckdb.duckdb"
+
+data_source depguard_snowflake:
+  type: snowflake
+  connection:
+    username: ${SNOWFLAKE_USER}
+    password: ${SNOWFLAKE_PASSWORD}
+    account: ${SNOWFLAKE_ACCOUNT}
+    database: ${SNOWFLAKE_DATABASE}
+    warehouse: ${SNOWFLAKE_WAREHOUSE}
+    role: ${SNOWFLAKE_ROLE}
+  schema: bronze

@@ -1,0 +1,7 @@
+checks for bronze_osv_vulnerabilities:
+  - row_count > 0
+  - missing_count(_queried_package_name) = 0
+
+checks for bronze_github_repos:
+  - row_count > 0
+  - missing_count(repo_name) = 0
