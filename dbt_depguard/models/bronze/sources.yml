@@ -4,4 +4,15 @@ sources:
     schema: bronze
     tables:
       - name: bronze_osv_vulnerabilities
+        columns:
+          - name: id
+            tests:
+              - not_null
       - name: bronze_github_repos
+        columns:
+          - name: repo_name
+            tests:
+              - not_null
+          - name: owner
+            tests:
+              - not_null
