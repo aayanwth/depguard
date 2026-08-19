@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: silver_cve_incidents
+    columns:
+      - name: cve_id
+        tests:
+          - unique
+          - not_null
+
+  - name: silver_packages
+    columns:
+      - name: package_name
+        tests:
+          - not_null
+      - name: ecosystem
+        tests:
+          - not_null
+
+  - name: silver_repositories
+    columns:
+      - name: repo_name
+        tests:
+          - not_null
+      - name: owner
+        tests:
+          - not_null
