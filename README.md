@@ -6,37 +6,8 @@
 
 ## 🏗️ Architecture
 
-```
-┌──────────────┐     ┌──────────────┐
-│   OSV API    │     │  GitHub API  │
-└──────┬───────┘     └──────┬───────┘
-       │  Python/dlt         │  Python/dlt
-       ▼                     ▼
-┌─────────────────────────────────────┐
-│         BRONZE (Raw Ingestion)      │  ◄── Soda Core DQ Checks
-│         Snowflake / DuckDB          │
-└──────────────────┬──────────────────┘
-                   │  dbt
-                   ▼
-┌─────────────────────────────────────┐
-│        SILVER (Cleaned & Typed)     │
-│  silver_cve_incidents               │
-│  silver_packages                    │
-│  silver_repositories                │
-└──────────────────┬──────────────────┘
-                   │  dbt
-                   ▼
-┌─────────────────────────────────────┐
-│      GOLD (Dimensional Models)      │
-│  fact_vulnerability_incident        │
-│  dim_package    dim_repository      │
-└──────────────────┬──────────────────┘
-                   │
-                   ▼
-         ┌─────────────────┐
-         │  Power BI / BI  │
-         └─────────────────┘
-```
+<img width="1084" height="718" alt="Screenshot 2026-08-25 143314" src="https://github.com/user-attachments/assets/4fc8c77c-0b82-41a8-8e39-6daec1b2c2e8" />
+
 
 **Orchestration:** Apache Airflow (Docker) or native Python orchestrator (Windows)
 
